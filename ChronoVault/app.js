@@ -514,7 +514,6 @@
                 algorithm: vaultData.crypto?.algorithm,
                 kdf: vaultData.crypto?.kdf,
                 iterations: vaultData.crypto?.iterations,
-                passwordHashPreview: vaultData.crypto?.passwordHash?.substring(0, 20) + '...',
                 dataSize: vaultData.data?.length + ' chars (base64)'
             });
 

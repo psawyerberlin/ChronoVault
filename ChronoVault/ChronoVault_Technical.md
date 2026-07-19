@@ -93,11 +93,11 @@ async function verifyPasswordSlow(password, salt, storedVerifier) {
 }
 ```
 
-### Vault File Format (v2.1)
+### Vault File Format (v2.2)
 
 ```json
 {
-  "version": "2.1",
+  "version": "2.2",
   "type": "text|pdf|file",
   "created": "2025-12-22T10:30:00.000Z",
   "security": {
@@ -122,8 +122,7 @@ async function verifyPasswordSlow(password, salt, storedVerifier) {
     "iv": "base64-encoded-12-bytes",
     "dataIv": "base64-encoded-12-bytes",
     "verifierSalt": "base64-encoded-32-bytes",      // NEW in v2.1
-    "passwordVerifier": "base64-encoded-32-bytes",  // NEW in v2.1
-    "passwordHash": "base64-encoded-32-bytes"       // SHA-256(password + base64(salt))
+    "passwordVerifier": "base64-encoded-32-bytes"   // NEW in v2.1
   },
   "data": "base64-encoded-encrypted-data"
 }
@@ -258,6 +257,8 @@ assert(await verifyPasswordSlow("wrong", salt, verifier1) === false);
 4. Attempt decrypt with "test123" after timelock → Should succeed
 
 ## Changelog
+
+### v2.2 – Removed passwordHash from vault format (offline brute-force vector); password verification now relies solely on the slow PBKDF2+HMAC verifier.
 
 ### v2.1 (December 2025)
 - Added `verifierSalt` field (256-bit, base64)

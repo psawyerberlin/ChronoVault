@@ -493,19 +493,6 @@ const CryptoUtils = (function() {
     }
 
     /**
-     * Create password hash: SHA-256(password + base64(salt))
-     * This is stored for reference but NOT used for verification.
-     */
-    async function createPasswordHash(password, salt) {
-        debugLog('CRYPTO', 'Creating password hash (SHA-256)...');
-        const encoder = new TextEncoder();
-        const saltBase64 = salt instanceof Uint8Array ? arrayBufferToBase64(salt) : salt;
-        const data = encoder.encode(password + saltBase64);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        return arrayBufferToBase64(hashBuffer);
-    }
-
-    /**
      * Create a SLOW password verifier using PBKDF2-derived key + HMAC
      * 
      * This provides brute-force resistance by using:
@@ -579,11 +566,18 @@ const CryptoUtils = (function() {
 
     /**
      * Verify password against stored hash (LEGACY ONLY - v1 vaults)
-     * Uses simple SHA-256 comparison - NOT brute-force resistant
+     * Uses simple SHA-256 comparison - NOT brute-force resistant.
+     * Hash logic is inlined here since createPasswordHash() no longer
+     * exists as a standalone function (removed to stop it being used
+     * for new vaults) - this is only reachable from decryptLegacy() for v1 vaults.
      */
     async function verifyPasswordLegacy(password, salt, storedHash) {
         debugLog('CRYPTO', 'Verifying password (legacy SHA-256 method)...');
-        const hash = await createPasswordHash(password, salt);
+        const encoder = new TextEncoder();
+        const saltBase64 = salt instanceof Uint8Array ? arrayBufferToBase64(salt) : salt;
+        const data = encoder.encode(password + saltBase64);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hash = arrayBufferToBase64(hashBuffer);
         return hash === storedHash;
     }
 
@@ -759,12 +753,9 @@ const CryptoUtils = (function() {
             const passwordVerifier = await createPasswordVerifier(password, verifierSalt);
             debugLog('ENCRYPT', 'Password verifier created');
 
-            // Also create simple hash for reference
-            const passwordHash = await createPasswordHash(password, salt);
-
             // Create vault structure
             const vault = {
-                version: '2.1', // Real timelock + JSON-safe ciphertext + slow password verifier
+                version: '2.2', // Real timelock + JSON-safe ciphertext + slow password verifier only (no fast passwordHash)
                 type: dataType,
                 created: new Date().toISOString(),
                 security: {
@@ -791,9 +782,7 @@ const CryptoUtils = (function() {
                     dataIv: arrayBufferToBase64(dataIv),
                     // Password verification (SLOW - 200k PBKDF2 iterations + HMAC)
                     verifierSalt: arrayBufferToBase64(verifierSalt),
-                    passwordVerifier: passwordVerifier,
-                    // Simple hash for reference: SHA-256(password + base64(salt))
-                    passwordHash: passwordHash
+                    passwordVerifier: passwordVerifier
                 },
                 data: arrayBufferToBase64(fullyEncrypted)
             };
